@@ -26,6 +26,19 @@ class Admin::ContentController < Admin::BaseController
   def new
     new_or_edit
   end
+  
+  def merge 
+    id = params[:id]
+    merge_id = params[:merge_with]
+    merge_articles id, merge_id
+    merge_comments_article id, merge_id
+    # remove unnecesary comments
+    Article.find(id).destroy
+    Article.find(merge_id).destroy
+
+    flash[:notice] = _("This article was merged successfully")
+    redirect_to :action => 'index'
+  end
 
   def edit
     @article = Article.find(params[:id])
@@ -114,6 +127,20 @@ class Admin::ContentController < Admin::BaseController
   end
 
   protected
+  
+  def merge_articles id, merge_id
+    @article = Article.merge_with id, merge_id
+    @article.user_id = current_user
+    @article.state = "published"
+    @article.save
+  end
+
+  def merge_comments_article id, merge_id
+    @comment = Comment.merge_with id, merge_id
+    @comment.map { |i| i.attributes = { article_id:  @article.id }}
+    @comment.map! { |i| i.attributes }
+    Comment.create(@comment) unless @comment.empty?
+  end
 
   def get_fresh_or_existing_draft_for_article
     if @article.published and @article.id
