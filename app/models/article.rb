@@ -44,6 +44,16 @@ class Article < Content
   end
 
   has_and_belongs_to_many :tags
+  
+  def self.merge_articles(article1, article2)
+    article1.body = "#{article1.body} #{article2.body}"
+
+    article1.comments << article2.comments
+
+    Article.delete(article2) if (result = article1.save)
+
+    result
+  end
 
   before_create :set_defaults, :create_guid
   after_create :add_notifications

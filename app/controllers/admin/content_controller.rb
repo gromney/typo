@@ -126,6 +126,40 @@ class Admin::ContentController < Admin::BaseController
     render :text => nil
   end
 
+  def merge_article
+    # params hash will include:
+    #   :id         => id of article from "edit" page
+    #   :merge_with => id of article specified in "Merge Article" form 
+    # For example, if the user had been editing article 5, and specified
+    # article 7 as the article to merge with, then id==5 and merge_with==7
+
+    @article = Article.find_by_id(params[:id])
+
+    if ! can_merge?
+      flash[:error] = @merge_error
+    elsif ! (@article_to_merge = Article.find_by_id(params[:merge_with]))
+      flash[:error] = _("Specified merge article does not exist")
+    elsif @article.id == @article_to_merge.id
+      flash[:error] = _("Cannot merge article with itself")
+    elsif ! Article.merge_articles(@article, @article_to_merge)
+      flash[:error] = _("There was a problem with merging the articles")
+    end
+
+    redirect_to :action => 'index' and return
+  end
+  
+  def can_merge?
+    @merge_error = nil
+    if !current_user.admin?
+      @merge_error = "Only admin can merge articles"
+    elsif !@article
+      @merge_error = "Article not set"
+    elsif @article.new_record?
+      @merge_error = "Cannot merge new article"
+    end
+    @merge_error.nil?
+  end
+  
   protected
   
   def merge_articles id, merge_id
